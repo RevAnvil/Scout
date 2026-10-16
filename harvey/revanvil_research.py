@@ -33,20 +33,36 @@ INDUSTRIAL_TERMS = (
     "fitting", "bearing", "valve", "pump", "cylinder", "manufacturing",
 )
 
+HIGH_VALUE_INDUSTRIAL_TERMS = (
+    "hydraulic", "fluid power", "power transmission", "mro",
+)
+
+DISTRIBUTION_TERMS = (
+    "distributor", "distribution", "industrial supply",
+)
+
 RELEVANT_HIRING_TERMS = (
-    "sales", "business development", "revenue", "account manager",
-    "inside sales", "sales operations", "revenue operations", "crm", "erp",
+    "sales operations", "revenue operations", "revops", "crm", "erp",
+    "inside sales", "business development", "sales manager", "sales director",
+    "account manager", "customer success", "commercial operations",
+)
+
+FALSE_HIRING_TERMS = (
+    "contact sales", "find your sales rep", "find a sales rep", "sales partner",
+    "after sales support", "sales@", "email sales", "contact our sales",
 )
 
 
 def _domain(row: dict) -> str:
+    website = (row.get("website") or "").strip()
+    if website:
+        parsed = urlparse(website if "://" in website else f"https://{website}")
+        if parsed.netloc:
+            return parsed.netloc.lower().removeprefix("www.")
     value = (row.get("company_domain") or row.get("domain") or "").strip()
     if value:
         value = re.sub(r"^https?://", "", value, flags=re.I).split("/")[0]
         return value.lower().removeprefix("www.")
-    website = (row.get("website") or "").strip()
-    if website:
-        return (urlparse(website).netloc or "").lower().removeprefix("www.")
     return ""
 
 
@@ -77,20 +93,66 @@ def _join(values: list[str]) -> str:
     return " | ".join(seen)
 
 
-def _best_signal(row: dict, *, rfq: bool, hiring: list[str], tech: list[str], dms: list[str], industrial_hits: list[str]) -> tuple[str, int]:
-    if hiring:
-        role = hiring[0]
-        return f"Hiring signal: {role}", 10
+def _valid_hiring_roles(values: list[str]) -> list[str]:
+    valid = []
+    for value in values:
+        lower = value.lower().strip()
+        if not lower or "@" in lower:
+            continue
+        if any(term in lower for term in FALSE_HIRING_TERMS):
+            continue
+        if any(term in lower for term in RELEVANT_HIRING_TERMS):
+            valid.append(value)
+    return valid
+
+
+def _research_bonus(*, rfq: bool, hiring: list[str], dms: list[str], tech: list[str], industrial_hits: list[str]) -> tuple[int, list[str]]:
+    """Award at most 20 points for live evidence that strengthens RevAnvil ICP fit."""
+    bonus = 0
+    reasons: list[str] = []
+    lower_hits = {x.lower() for x in industrial_hits}
+
     if rfq:
-        return "Public RFQ / request-a-quote workflow detected", 9
+        bonus += 5
+        reasons.append("public RFQ/quote workflow")
+
+    if any(term in lower_hits for term in HIGH_VALUE_INDUSTRIAL_TERMS):
+        bonus += 6
+        reasons.append("website confirms hydraulics/fluid-power/core industrial niche")
+    elif any(term in lower_hits for term in DISTRIBUTION_TERMS):
+        bonus += 4
+        reasons.append("website confirms distribution model")
+    elif industrial_hits:
+        bonus += 2
+        reasons.append("website confirms industrial fit")
+
+    if hiring:
+        bonus += 4
+        reasons.append(f"real sales/RevOps hiring signal: {hiring[0]}")
+
     if dms:
-        return f"Decision-maker identified publicly: {dms[0]}", 7
+        bonus += 3
+        reasons.append(f"public decision-maker evidence: {dms[0]}")
+
+    # Public website technology is only a weak complexity signal. It is NOT ERP evidence.
     if tech:
-        return f"Public sales/marketing technology detected: {tech[0]}", 4
-    if industrial_hits:
-        return f"Industrial fit confirmed from website language: {industrial_hits[0]}", 4
+        bonus += 2
+        reasons.append("public website technology/operational complexity")
+
+    return min(20, bonus), reasons
+
+
+def _best_signal(row: dict, *, rfq: bool, hiring: list[str], dms: list[str], industrial_hits: list[str]) -> str:
+    if hiring:
+        return f"Hiring signal: {hiring[0]}"
+    if rfq:
+        return "Public RFQ / request-a-quote workflow detected"
+    if dms:
+        return f"Decision-maker identified publicly: {dms[0]}"
+    if any(term in {x.lower() for x in industrial_hits} for term in HIGH_VALUE_INDUSTRIAL_TERMS):
+        return "Website confirms strong hydraulic/fluid-power industrial fit"
     existing = (row.get("scout_signal") or row.get("outreach_angle") or "").strip()
-    return existing or "No strong public buying signal found", 0
+    return existing or "No strong public buying signal found"
 
 
 async def _research_one(row: dict, semaphore: asyncio.Semaphore) -> dict:
@@ -117,7 +179,7 @@ async def _research_one(row: dict, semaphore: asyncio.Semaphore) -> dict:
                 if home:
                     text = re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", home)).lower()
                     rfq = any(re.search(p, text, re.I) for p in RFQ_PATTERNS)
-                    industrial_hits = [term for term in INDUSTRIAL_TERMS if term in text][:5]
+                    industrial_hits = [term for term in INDUSTRIAL_TERMS if term in text][:8]
 
                     if not rfq:
                         for path in ("/rfq", "/request-a-quote", "/request-quote", "/quote", "/get-a-quote"):
@@ -128,15 +190,25 @@ async def _research_one(row: dict, semaphore: asyncio.Semaphore) -> dict:
 
                 tech = _signal_values(obs, "TECH_STACK")
                 hiring_all = _signal_values(obs, "HIRING_ROLE")
-                hiring = [h for h in hiring_all if any(term in h.lower() for term in RELEVANT_HIRING_TERMS)]
+                hiring = _valid_hiring_roles(hiring_all)
                 dms = _signal_values(obs, "DECISION_MAKER_TITLE")
                 contacts = _signal_values(obs, "CONTACT_FOUND")
                 forms = _signal_values(obs, "CONTACT_FORM_URL")
                 page_count = _signal_values(obs, "SITE_PAGE_COUNT")
                 blog_stale = _signal_values(obs, "BLOG_STALE")
 
-                signal, bonus = _best_signal(
-                    row, rfq=rfq, hiring=hiring, tech=tech, dms=dms,
+                bonus, bonus_reasons = _research_bonus(
+                    rfq=rfq,
+                    hiring=hiring,
+                    dms=dms,
+                    tech=tech,
+                    industrial_hits=industrial_hits,
+                )
+                signal = _best_signal(
+                    row,
+                    rfq=rfq,
+                    hiring=hiring,
+                    dms=dms,
                     industrial_hits=industrial_hits,
                 )
 
@@ -145,12 +217,25 @@ async def _research_one(row: dict, semaphore: asyncio.Semaphore) -> dict:
                 except (TypeError, ValueError):
                     base_score = 0
                 researched_score = min(100, base_score + bonus)
+                researched_tier = "A" if researched_score >= 80 else "B" if researched_score >= 65 else "C" if researched_score >= 50 else "D"
+
+                email_status = (row.get("scout_email_status") or "").strip().lower()
+                suppressed_text = " ".join([
+                    str(row.get("selection_status") or "").lower(),
+                    str(row.get("hold_reason") or "").lower(),
+                    str(row.get("source_risk_flags") or "").lower(),
+                ])
+                is_suppressed = any(term in suppressed_text for term in ["do not contact", "dnc", "opt out", "unsubscribe", "suppressed"])
+                final_send_ready = researched_score >= 80 and email_status == "verified" and not is_suppressed
 
                 result.update({
                     "scout_research_status": "complete" if home else "site_unreachable",
                     "scout_public_signal": signal,
                     "scout_research_score_bonus": str(bonus),
+                    "scout_research_score_reasons": "; ".join(bonus_reasons),
                     "scout_researched_score": str(researched_score),
+                    "scout_researched_tier": researched_tier,
+                    "scout_final_send_ready": "Yes" if final_send_ready else "No",
                     "scout_rfq_detected": "Yes" if rfq else "No",
                     "scout_website_tech": _join(tech),
                     "scout_hiring_roles": _join(hiring_all),
@@ -195,11 +280,13 @@ async def research(input_csv: str, output_csv: str, *, limit: int = 0, concurren
 
     extras = [
         "scout_research_domain", "scout_research_status", "scout_public_signal",
-        "scout_research_score_bonus", "scout_researched_score", "scout_rfq_detected",
-        "scout_website_tech", "scout_hiring_roles", "scout_relevant_hiring_signal",
-        "scout_decision_makers_found", "scout_public_contacts_found",
-        "scout_contact_form", "scout_site_page_count", "scout_blog_stale",
-        "scout_industrial_terms", "scout_evidence_urls", "scout_research_error",
+        "scout_research_score_bonus", "scout_research_score_reasons",
+        "scout_researched_score", "scout_researched_tier", "scout_final_send_ready",
+        "scout_rfq_detected", "scout_website_tech", "scout_hiring_roles",
+        "scout_relevant_hiring_signal", "scout_decision_makers_found",
+        "scout_public_contacts_found", "scout_contact_form", "scout_site_page_count",
+        "scout_blog_stale", "scout_industrial_terms", "scout_evidence_urls",
+        "scout_research_error",
     ]
     original = list(rows[0].keys()) if rows else []
     fields = original + [f for f in extras if f not in original]
