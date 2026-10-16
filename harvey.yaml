@@ -1,78 +1,92 @@
 persona:
-  name: "Harvey"
-  company: "Your Company"
-  role: "Business Development"
-  email: "harvey@yourcompany.com"
-  linkedin: "linkedin.com/in/harvey-yourcompany"
-  tone: "professional, consultative, confident"
+  name: "Corbin"
+  company: "RevAnvil"
+  role: "Founder / Revenue Systems"
+  email: "corbin@getrevanvil.com"
+  linkedin: ""
+  tone: "short, human, direct, industrially literate, consultative, never agency-polished"
 
 product:
-  name: "Your Product"
-  description: "Describe what your product does and who it's for"
-  pricing: "Starting at $X/mo"
+  name: "RevAnvil Revenue Systems"
+  description: "Revenue-leak detection and sales-process improvement for industrial distributors and manufacturers. RevAnvil uses the systems and customer data a company already has to surface dormant and declining accounts, missed quote follow-up, overdue orders, pipeline gaps, CRM/ERP blind spots, and other commercial leakage."
+  pricing: "$3,000-$5,000/month depending on scope"
   key_benefits:
-    - "Benefit 1"
-    - "Benefit 2"
-    - "Benefit 3"
+    - "Find dormant and declining customers before the revenue loss becomes obvious"
+    - "Surface missed RFQ and quote follow-up gaps"
+    - "Identify overdue-order, pipeline, and CRM/ERP visibility problems"
+    - "Improve follow-up and account prioritization without forcing another software platform"
   objection_responses:
-    "too expensive": "I understand budget is important. Most of our clients see ROI within 30 days..."
-    "already have a solution": "That makes sense. Curious — what's the one thing you wish it did better?"
-    "not interested": "No worries at all. Mind if I ask what your current approach looks like?"
+    "already have a crm": "Good — RevAnvil is not trying to replace it. The question is whether it is surfacing the revenue leaks your team needs to act on."
+    "already have an erp": "That is usually where the useful data already lives. RevAnvil focuses on what the current system is not making obvious."
+    "not interested": "No problem. If dormant customers, declining accounts, and missed quote follow-up are already covered, there may not be much for us to fix."
+    "too expensive": "The right comparison is the size of the leakage. One distributor had 68 customers disappear year over year, representing about $680k in prior revenue."
   offer:
-    primary: ""                    # Main offer (e.g., "Monthly subscription starting at $99/mo")
-    entry: ""                      # Low-commitment entry (e.g., "14-day free trial", "Free audit")
-    goal: "book_call"              # Goal of outreach: book_call, start_trial, get_reply
-    booking_method: "calendar_link" # calendar_link, suggest_times, ask_preference
-    booking_url: ""                # Calendar link URL (if using calendar_link method)
-    meeting_duration: "15 minutes" # How long the call is
-    meeting_owner: ""              # Who takes the meeting (name or role)
+    primary: "$3,000-$5,000/month revenue systems engagement"
+    entry: "10-minute comparison of how the company currently catches revenue leaks"
+    goal: "book_call"
+    booking_method: "ask_preference"
+    booking_url: ""
+    meeting_duration: "10 minutes"
+    meeting_owner: "Corbin"
 
 icp:
   industries:
-    - "SaaS"
-    - "Marketing Agency"
-  company_size: "10-200 employees"
+    - "Industrial Distribution"
+    - "Hydraulics Distribution"
+    - "Fluid Power"
+    - "Industrial Supply"
+    - "MRO Distribution"
+    - "Industrial Manufacturing"
+    - "Metal Distribution"
+    - "Electrical Distribution"
+    - "Mechanical / Power Transmission Distribution"
+  company_size: "$5M-$100M annual revenue; typically 15-500 employees"
   titles:
-    - "VP Marketing"
-    - "Head of Growth"
-    - "CMO"
-    - "Director of Marketing"
+    - "Owner"
+    - "President"
+    - "CEO"
+    - "General Manager"
+    - "VP Sales"
+    - "Vice President of Sales"
+    - "Sales Director"
+    - "Director of Sales"
+    - "Chief Revenue Officer"
+    - "Revenue Operations"
+    - "Sales Operations"
   geography:
     - "United States"
-  # Roles that signal a company is in-market RIGHT NOW (a company hiring a
-  # "Head of Growth" is shopping for growth tooling). Used for careers-page
-  # scanning and job-board discovery. Empty = fall back to titles above.
-  hiring_signals: []
+  hiring_signals:
+    - "Revenue Operations"
+    - "Sales Operations"
+    - "CRM Administrator"
+    - "ERP Administrator"
+    - "Inside Sales"
+    - "Sales Manager"
+    - "Business Development"
 
 channels:
   email:
     enabled: true
-    provider: "gmail"          # gmail (recommended) | microsoft | smtp | instantly
-    max_daily_sends: 50
-    require_approval: true      # native providers: emails wait in the Outbox
-    send_to_risky: false        # also send to catch-all domains (off = safest)
-    max_bounce_rate: 0.05       # pause all sending if bounces exceed this
+    provider: "instantly"
+    max_daily_sends: 60
+    require_approval: true
+    send_to_risky: false
+    max_bounce_rate: 0.03
   linkedin:
-    enabled: true
-    max_daily_connections: 20
-    max_daily_messages: 10
+    enabled: false
+    max_daily_connections: 0
+    max_daily_messages: 0
 
 usage:
   max_daily_claude_percent: 80
   heartbeat_interval_minutes: 15
   quiet_hours:
-    start: "22:00"
-    end: "07:00"
+    start: "17:00"
+    end: "09:00"
     timezone: "America/New_York"
 
-# Optional: check each new recipient with Precleared (precleared.dev) before
-# the first cold email: may cold marketing email go to this address under UK
-# PECR, US CAN-SPAM, Canada's CASL, Germany's UWG and France's rules? Any other
-# answer holds the email back, with the reason in the Outbox. One check per
-# address; 10 a day free without a key, 25 with a free key (PRECLEARED_API_KEY
-# in .env). Applies to the native providers (gmail, smtp).
 compliance:
   precleared:
     enabled: false
-    sender_country: ""          # GB or US: where your business is based
-    address_source: "unknown"   # published | bought | scraped | given | unknown
+    sender_country: "US"
+    address_source: "unknown"

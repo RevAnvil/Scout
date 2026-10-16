@@ -1,82 +1,102 @@
-# Lead Qualification Skills
+# RevAnvil Lead Qualification
 
-Harvey uses a hybrid qualification approach: BANT for initial screening, enhanced with ICP scoring for prioritization.
+Scout qualifies companies for RevAnvil, not generic SaaS outreach. The goal is to identify industrial distributors and manufacturers where recurring customer revenue, quoting activity, and ERP/CRM data create a realistic chance of hidden commercial leakage.
 
----
+## Non-negotiable fit
 
-## BANT Framework (Initial Qualification)
+Prioritize companies that are:
+- Industrial distributors or manufacturers with recurring B2B customer relationships
+- Roughly $5M-$100M annual revenue (use employee count, locations, catalog breadth, and sales-team size as proxies when revenue is unavailable)
+- Primarily US-based
+- Large enough to have meaningful customer history, quoting volume, or sales-process complexity
+- Likely to operate an ERP, CRM, or both
 
-### Budget
-- Can they afford the solution?
-- Signals: company size, funding stage, job postings for related roles
-- Green flags: recently funded, hiring in your product's domain
-- Red flags: very small team with no budget indicators
+Strong verticals include hydraulics/fluid power, industrial supply, MRO, metals, electrical, mechanical/power transmission, hose/fittings, automation components, and similar industrial distribution/manufacturing categories.
 
-### Authority
-- Is this person a decision-maker or influencer?
-- Decision-maker titles: VP, Director, Head of, C-suite, Founder
-- Influencer titles: Manager, Lead, Senior — can champion internally
-- If not the authority: ask for the right person (don't waste sequences)
+## Decision-maker priority
 
-### Need
-- Do they have the problem you solve?
-- Signals: tech stack, industry challenges, LinkedIn posts about pain points
-- Validate by: checking their current tools, recent job posts, company stage
+Primary:
+1. Owner / President / CEO
+2. General Manager
+3. VP/Director of Sales
+4. Revenue Operations / Sales Operations
+5. CRO or equivalent commercial leader
 
-### Timeline
-- Are they likely to buy soon?
-- Signals: active evaluation (G2/Capterra reviews), recent vendor changes
-- "Not now" is okay — schedule a future touchpoint
+Do not over-index on marketing titles unless there is clear responsibility for sales operations, CRM, quoting, or customer retention.
 
----
+## RevAnvil Fit Score (0-100)
 
-## ICP Scoring System
+### Industry fit — 0-25
+- 25: Clear industrial distributor/manufacturer with recurring B2B sales
+- 18: Adjacent industrial business with similar sales motion
+- 8: Industrial but mostly project/one-off or unclear recurring account base
+- 0: Unrelated sector
 
-Score every prospect 1-10 before outreach:
+### Revenue-leak surface area — 0-25
+Look for evidence of:
+- Large product catalog / many SKUs
+- RFQ or quote-driven selling
+- Multiple sales reps / inside sales team
+- Multiple locations or territories
+- Repeat customer relationships
+- ERP/CRM dependence
+- Service/repair/replacement demand
 
-| Criteria | Points | Details |
-|----------|--------|---------|
-| **Title match** | 0-3 | Exact ICP title = 3, adjacent = 2, related = 1 |
-| **Company fit** | 0-3 | Right industry + size = 3, one match = 2, tangential = 1 |
-| **Engagement signals** | 0-2 | Active on LinkedIn = 1, posts about relevant topics = 2 |
-| **Reachability** | 0-2 | Verified email = 2, LinkedIn only = 1, no contact = 0 |
+25 means several of these are clearly present.
 
-### Priority Tiers
-- **Score 8-10**: High priority — personalized outreach immediately
-- **Score 5-7**: Medium priority — include in batch campaigns
-- **Score 3-4**: Low priority — only if pipeline needs volume
-- **Score 1-2**: Skip — not worth the outreach
+### Company scale — 0-15
+- 15: Strong proxy for $10M-$100M / substantial team
+- 10: Likely $5M-$10M
+- 5: Borderline small but plausible
+- 0: Too small to justify RevAnvil economics
 
----
+### Commercial signal — 0-20
+Add weight for current signals such as:
+- Hiring RevOps, Sales Ops, CRM/ERP admin, inside sales, sales manager, business development
+- CRM/ERP implementation or migration language
+- New sales leadership
+- Expansion/new location
+- Active RFQ/contact infrastructure
+- Obvious manual sales-process friction
+- Recruiting multiple commercial roles
 
-## MEDDIC (For Complex Deals — Future Use)
+Do NOT invent signals. Every specific must be traceable to a stored fact.
 
-When Harvey handles enterprise prospects or multi-stakeholder deals:
+### Reachability & authority — 0-15
+- 15: Verified senior decision-maker email
+- 10: Verified relevant operator/leader
+- 5: Generic contact or unverified decision-maker
+- 0: No reasonable contact path
 
-- **Metrics**: What quantifiable outcomes does the buyer care about?
-- **Economic Buyer**: Who controls the budget?
-- **Decision Criteria**: What factors will they use to decide?
-- **Decision Process**: What steps do they go through to buy?
-- **Identify Pain**: What's the core problem driving urgency?
-- **Champion**: Is there an internal advocate for your solution?
+## Priority tiers
 
----
+- **85-100 — A-Tier:** personalized outreach; research one strong signal before sending
+- **70-84 — B-Tier:** good fit; standard RevAnvil sequence with relevant industry context
+- **55-69 — C-Tier:** only use when volume is needed or a strong signal appears
+- **Below 55 — Skip:** do not spend outbound capacity
 
-## Disqualification Signals
+## Disqualifiers
 
-Harvey should NOT pursue prospects who:
-- Have fewer employees than the minimum ICP threshold
-- Are in a completely unrelated industry
-- Have no discoverable contact information
-- Already use a deeply entrenched competitor (unless switching signals exist)
-- Explicitly opted out of communications
+Skip or heavily downgrade:
+- Pure consumer businesses
+- Tiny shops with minimal sales-process complexity
+- Businesses with no recurring/repeat customer motion
+- Consultants/agencies/software vendors unrelated to industrial operations
+- Companies clearly outside RevAnvil's serviceable range
+- Contacts that opted out or should not be contacted
+- Data brokers/directories mistaken for operating companies
 
-## Enrichment Priorities
+## Research order
 
-When qualifying, gather in this order:
-1. Company domain + size (free: LinkedIn, website)
-2. Decision-maker name + title (free: LinkedIn search)
-3. Email address (free: pattern guessing + SMTP verification)
-4. Recent company news (free: Google search)
-5. Tech stack (free: BuiltWith, Wappalyzer)
-6. Personalization angles (free: LinkedIn posts, company blog)
+Gather in this order:
+1. What the company sells and to whom
+2. Distributor vs manufacturer vs service company
+3. Scale proxies: employees, locations, catalog, branches
+4. RFQ/quote/contact sales motion
+5. Relevant hiring signals
+6. ERP/CRM/software clues when publicly visible
+7. Decision-maker
+8. Verified contact
+9. One personalization signal worth referencing
+
+The objective is not to build a dossier. It is to answer: **Is this a company where RevAnvil could realistically find meaningful revenue leakage, and is there a credible reason to contact them now?**
