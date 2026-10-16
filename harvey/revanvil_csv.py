@@ -3,28 +3,67 @@ from __future__ import annotations
 import argparse
 import csv
 
+# RevAnvil ICP score is intentionally strict. Base fit tops out at 80 points;
+# live public research can add the final 20. That keeps 80+ rare and makes a
+# 100 represent a near-ideal RevAnvil account rather than a generic industrial lead.
 INDUSTRY_TERMS = {
-    "hydraulic": 18, "fluid power": 18, "industrial distribution": 18,
-    "industrial distributor": 18, "mro": 14, "industrial supply": 14,
-    "power transmission": 14, "electrical distribution": 12,
-    "metal distribution": 12, "manufacturer": 8, "manufacturing": 8,
-    "distribution": 8, "distributor": 8,
+    "hydraulic": 25,
+    "fluid power": 25,
+    "industrial distribution": 22,
+    "industrial distributor": 22,
+    "power transmission": 20,
+    "mro": 18,
+    "industrial supply": 18,
+    "electrical distribution": 15,
+    "metal distribution": 15,
+    "distributor": 10,
+    "distribution": 10,
+    "manufacturer": 8,
+    "manufacturing": 8,
 }
+
 TITLE_TERMS = {
-    "owner": 15, "president": 15, "ceo": 15, "chief executive": 15,
-    "general manager": 14, "vp sales": 15, "vice president of sales": 15,
-    "sales director": 14, "director of sales": 14,
-    "chief revenue officer": 15, "revenue operations": 15,
-    "sales operations": 14, "vp": 10, "vice president": 10,
-    "director": 9, "manager": 5,
+    "owner": 12,
+    "president": 12,
+    "ceo": 12,
+    "chief executive": 12,
+    "general manager": 12,
+    "vp sales": 12,
+    "vice president of sales": 12,
+    "sales director": 11,
+    "director of sales": 11,
+    "chief revenue officer": 12,
+    "revenue operations": 12,
+    "sales operations": 11,
+    "vp": 8,
+    "vice president": 8,
+    "director": 6,
+    "manager": 3,
 }
+
 TECH_TERMS = {
-    "prophet 21": 10, "p21": 10, "epicor": 10, "infor": 10,
-    "rubbertree": 8, "salesforce": 5, "hubspot": 5, "crm": 4, "erp": 4,
+    "prophet 21": 10,
+    "p21": 10,
+    "epicor": 10,
+    "infor": 10,
+    "rubbertree": 8,
+    "salesforce": 6,
+    "hubspot": 5,
+    "crm": 3,
+    "erp": 3,
 }
+
 ANGLE_TERMS = {
-    "declining": 10, "reorder": 9, "dormant": 10, "quote": 9, "rfq": 9,
-    "cross-sell": 6, "pipeline": 6, "follow-up": 8, "overdue": 8, "account": 4,
+    "declining": 8,
+    "dormant": 8,
+    "quote": 7,
+    "rfq": 7,
+    "reorder": 7,
+    "follow-up": 7,
+    "overdue": 7,
+    "cross-sell": 5,
+    "pipeline": 5,
+    "account": 2,
 }
 
 
@@ -49,7 +88,7 @@ def revenue_points(value):
     if 5_000_000 <= revenue <= 100_000_000:
         return 15
     if 2_000_000 <= revenue < 5_000_000 or 100_000_000 < revenue <= 200_000_000:
-        return 8
+        return 6
     return 0
 
 
@@ -88,62 +127,72 @@ def score_row(row):
 
     points = contains_score(industry_blob, INDUSTRY_TERMS)
     score += points
-    if points:
-        reasons.append("industrial/distribution fit")
+    if points >= 25:
+        reasons.append("hydraulics/fluid-power ICP")
+    elif points >= 18:
+        reasons.append("strong industrial-distribution ICP")
+    elif points:
+        reasons.append("partial industrial fit")
 
     points = contains_score(title, TITLE_TERMS)
     score += points
-    if points:
-        reasons.append("decision-maker title")
+    if points >= 11:
+        reasons.append("core economic/operational decision maker")
+    elif points:
+        reasons.append("relevant senior title")
 
     points = revenue_points(txt(row, "annual_revenue_usd"))
     score += points
     if points == 15:
-        reasons.append("$5M-$100M revenue band")
+        reasons.append("$5M-$100M ICP revenue band")
+    elif points:
+        reasons.append("near ICP revenue band")
 
     points = contains_score(tech, TECH_TERMS)
     score += points
-    if points:
-        reasons.append("relevant CRM/ERP signal")
+    if points >= 8:
+        reasons.append("specific ERP/CRM evidence")
+    elif points:
+        reasons.append("general CRM/ERP signal")
 
     points = contains_score(angle, ANGLE_TERMS)
     score += points
     if points:
-        reasons.append("revenue-leak angle present")
+        reasons.append("RevAnvil revenue-leak use case")
 
     decision_fit = low(row, "decision_maker_fit")
     if decision_fit == "primary":
-        score += 10
+        score += 5
         reasons.append("primary decision maker")
     elif decision_fit:
-        score += 5
+        score += 2
 
     try:
         source_score = float(txt(row, "source_score"))
         if source_score >= 80:
-            score += 8
+            score += 5
+            reasons.append("high-confidence source record")
         elif source_score >= 65:
-            score += 4
+            score += 3
     except ValueError:
         pass
 
     email_status = normalize_status(row)
+    # Deliverability is tracked separately from ICP fit. A risky/invalid email
+    # should not make a great company look like a bad account; it should block send readiness.
     if email_status == "verified":
-        score += 4
         reasons.append("verified email")
     elif email_status == "invalid":
-        score -= 25
-        reasons.append("invalid email")
+        reasons.append("invalid email — not sendable")
     elif email_status == "risky":
-        score -= 3
-        reasons.append("catch-all/risky email")
+        reasons.append("catch-all/risky email — reverify")
 
     if suppressed(row):
         score = 0
         reasons.append("suppressed/do-not-contact")
 
-    score = max(0, min(100, int(round(score))))
-    tier = "A" if score >= 75 else "B" if score >= 60 else "C" if score >= 45 else "D"
+    score = max(0, min(80, int(round(score))))
+    tier = "A" if score >= 80 else "B" if score >= 65 else "C" if score >= 50 else "D"
     return score, tier, email_status, reasons
 
 
@@ -178,8 +227,10 @@ def run(input_csv, output_csv):
             "scout_score": score,
             "scout_tier": tier,
             "scout_email_status": email_status,
-            "scout_research_priority": "Yes" if score >= 60 and not suppressed(row) else "No",
-            "scout_send_ready": "Yes" if score >= 60 and email_status == "verified" and not suppressed(row) else "No",
+            # Research a little wider than the final B-tier cutoff so live evidence
+            # can promote borderline companies into the real ICP.
+            "scout_research_priority": "Yes" if score >= 55 and not suppressed(row) else "No",
+            "scout_send_ready": "Yes" if score >= 65 and email_status == "verified" and not suppressed(row) else "No",
             "scout_signal": signal(row),
             "scout_score_reasons": "; ".join(reasons),
         })
