@@ -6,6 +6,8 @@ import csv
 import datetime as dt
 import html
 import re
+import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -24,6 +26,14 @@ ICP_QUERIES = (
     '"industrial supply" hydraulics "request a quote"',
     '"industrial distributor" hydraulics RFQ',
     '"automation distributor" pneumatics hydraulics',
+    '"industrial distributor" bearings motors',
+    '"industrial parts distributor" "quote"',
+    '"industrial equipment distributor" "request quote"',
+    '"fluid power" "locations" distributor',
+    '"industrial components manufacturer" "request a quote"',
+    '"industrial automation" "distributor" "quote"',
+    '"motion control distributor" "RFQ"',
+    '"industrial supply" "sales team" "products"',
 )
 
 STATES = (
@@ -70,18 +80,15 @@ def unwrap_ddg(href: str) -> str:
 
 
 def result_rows(markup: str, query: str, state: str) -> list[dict]:
-    rows: list[dict] = []
-    pattern = re.compile(
-        r'<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>(.*?)</a>',
-        re.I | re.S,
-    )
-    for href, raw_title in pattern.findall(markup):
-        url = unwrap_ddg(href)
+    """Handle DuckDuckGo HTML links regardless of attribute order."""
+    rows = []
+    soup = BeautifulSoup(markup, "html.parser")
+    for anchor in soup.select("a.result__a, .result__title a, h2 a[data-testid='result-title-a']"):
+        url = unwrap_ddg(anchor.get("href") or "")
         domain = normalize_domain(url)
         if not domain or any(domain == j or domain.endswith("." + j) for j in JUNK):
             continue
-        title = re.sub(r"<[^>]+>", " ", html.unescape(raw_title))
-        title = re.sub(r"\s+", " ", title).strip()
+        title = re.sub(r"\s+", " ", anchor.get_text(" ", strip=True)).strip()
         if not title:
             continue
         rows.append({
@@ -96,18 +103,55 @@ def result_rows(markup: str, query: str, state: str) -> list[dict]:
     return rows
 
 
+def rss_rows(markup: str, query: str, state: str) -> list[dict]:
+    """Parse Bing's public search RSS response as a free fallback."""
+    try:
+        root = ET.fromstring(markup)
+    except ET.ParseError:
+        return []
+    rows = []
+    for item in root.findall(".//item"):
+        url = (item.findtext("link") or "").strip()
+        title = re.sub(r"\s+", " ", item.findtext("title") or "").strip()
+        domain = normalize_domain(url)
+        if not domain or not title:
+            continue
+        if any(domain == j or domain.endswith("." + j) for j in JUNK):
+            continue
+        rows.append({
+            "company_name": title.split(" - ")[0].split(" | ")[0].strip(),
+            "company_domain": domain,
+            "website": f"https://{domain}",
+            "discovery_query": query,
+            "discovery_state": state,
+            "discovery_source": "bing_rss",
+            "discovery_result_url": url,
+        })
+    return rows
+
+
 async def fetch_query(client: httpx.AsyncClient, query: str, state: str) -> list[dict]:
     full_query = f"{query} {state}"
-    try:
-        response = await client.post(
-            SEARCH_URL,
-            data={"q": full_query},
-            headers={"User-Agent": UA},
-        )
-        response.raise_for_status()
-        return result_rows(response.text, query, state)
-    except Exception:
-        return []
+    # Free providers may rate limit us. If both fail, log a diagnostic rather
+    # than treating a zero result as evidence that no prospects exist.
+    for source in ("ddg_get", "bing_rss"):
+        try:
+            if source == "ddg_get":
+                response = await client.get(SEARCH_URL, params={"q": full_query},
+                                            headers={"User-Agent": UA})
+                response.raise_for_status()
+                rows = result_rows(response.text, query, state)
+            else:
+                response = await client.get("https://www.bing.com/search",
+                                            params={"q": full_query, "format": "rss"},
+                                            headers={"User-Agent": UA, "Accept": "application/rss+xml, application/xml"})
+                response.raise_for_status()
+                rows = rss_rows(response.text, query, state)
+            if rows:
+                return rows
+        except (httpx.HTTPError, ValueError) as exc:
+            print(f"Scout source unavailable ({source}, {state}): {type(exc).__name__}")
+    return []
 
 
 async def homepage_fit(client: httpx.AsyncClient, row: dict) -> tuple[int, list[str]]:
@@ -115,6 +159,7 @@ async def homepage_fit(client: httpx.AsyncClient, row: dict) -> tuple[int, list[
     reasons: list[str] = []
     try:
         r = await client.get(row["website"], headers={"User-Agent": UA}, follow_redirects=True)
+        r.raise_for_status()
         text = re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", r.text)).lower()
     except Exception:
         return score, reasons
@@ -179,6 +224,7 @@ async def discover(output_csv: str, seen_csv: str = "", target: int = 40, states
             for query in ICP_QUERIES
         ])
 
+        print(f"Scout discovery: searched {len(batches)} query/state combinations; source hits: {sum(len(b) for b in batches)}")
         raw: list[dict] = []
         local_seen = set(seen)
         for batch in batches:
@@ -203,6 +249,7 @@ async def discover(output_csv: str, seen_csv: str = "", target: int = 40, states
             row["scout_send_ready"] = "No"
             return row
 
+        print(f"Scout discovery: {len(raw)} unseen domains before website screening")
         qualified = await asyncio.gather(*[qualify(row) for row in raw[: max(target * 4, 100)]])
         qualified.sort(key=lambda r: int(r.get("scout_score") or 0), reverse=True)
         selected = [r for r in qualified if int(r.get("scout_score") or 0) >= 50][:target]
